@@ -28,6 +28,7 @@ ebr_drive_number:	db 0 ; 0x0 = floppy, 0x80 = hdd
 					db 0 ; reserved
 ebr_signature:	db 29h
 ebr_volume_id:	db 12h, 34h, 56h, 78h ; serial number, value doesn't matter
+ebr_volume_label:	db 'OPERETING!!'
 ebr_system_id:	db 'FAT12   ' ; 8 bytes
 
 ;
@@ -76,6 +77,33 @@ main:
 
 .halt:
 	jmp .halt
+
+;
+; Disk routines
+;
+
+lba_to_chs:
+	push ax
+	push dx
+
+	xor dx, dx ; dx = 0
+	div word [bdb_sectors_per_track] ; ax = LBA / SectorsPerTrack
+									 ; dx = LBA % SectorsPerTrack
+	inc dx ; dx = (LBA % SectorsPerTrack + 1) = sector
+	mov cx, dx ; cx = sector
+
+	xor dx, dx
+	div word [bdb_heads] ; ax = (LBA / SectorsPerTrack) / Heads = cylinder
+						 ; dx = (LBA / SectorsPerTrack) % Heads = head
+	mov dh, dl ; dh = head
+	mov ch, al ; ch = Cylinder ( lower & 8bit)
+	shl ah, 6
+	or cl, ah ; put upper 2 bits of cylinder in CL
+
+	pop ax
+	mov dl, al ; restore DL
+	pop ax
+	ret
 
 msg_hello: db "Hello world!", ENDL,  0
 
