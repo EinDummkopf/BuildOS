@@ -69,14 +69,38 @@ main:
 	mov ss, ax
 	mov sp, 0x7C00 ; stack grows downwards
 
+	;read something from floopy disk
+	mov [ebr_drive_number], dl
+	
+	mov ax, 1 ; LBA = 1
+	mov cl, 1
+	mov bx, 0x7E00 
+	call disk_read
+
 	; print message
 	mov si, msg_hello
 	call puts
 
 	hlt
 
+;
+; Error handler
+;
+
+floopy_error:
+	mov si, msg_read_failed
+	call puts
+	jmp wait_key_and_reboot
+
+wait_key_and_reboot:
+	mov ah, 0
+	int 16h ; wait for keypress
+	jmp 0FFFFh:0 ; jump to beginning of BIOS. should reboot
+	hlt
+
 .halt:
-	jmp .halt
+	cli
+	hlt
 
 ;
 ; Disk routines
@@ -105,7 +129,58 @@ lba_to_chs:
 	pop ax
 	ret
 
+disk_read:
+	push ax
+	push bx
+	push cx
+	push dx
+	push di
+
+	push cx ; temporarily save CL (number of sectors to read)
+	call lba_to_chs
+	pop ax ; AL = number of sectors to read
+
+	mov ah, 02h
+	mov di, 3 ; retry count
+
+.retry:
+	pusha
+	stc
+	int 13h
+	jnc .done
+
+	; failed
+	popa
+	call disk_reset
+
+	dec di
+	test di, di
+	jnz .retry
+ 
+.fail:
+	jmp floopy_error
+
+.done:
+	popa
+
+	push di
+	push dx
+	push cx
+	push bx
+	push ax
+	ret
+
+disk_reset:
+	pusha
+	mov ah, 0
+	stc
+	int 13h
+	jc floopy_error
+	popa
+	ret
+
 msg_hello: db "Hello world!", ENDL,  0
+msg_read_failed: db "Read from disk failed!", ENDL, 0
 
 times 510-($-$$) db 0
 dw 0AA55h
