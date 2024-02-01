@@ -31,8 +31,24 @@ typedef struct {
     uint8_t SystemId[8];
 } __attribute__((__packed__)) BootSector;
 
+typedef struct {
+    uint8_t Name[11];
+    uint8_t Atrributes;
+    uint8_t _Reserved;
+    uint8_t CreatedTimeTenths;
+    uint16_t CreatedTime;
+    uint16_t CreatedDate;
+    uint16_t AccessedData;
+    uint16_t FirstClusterHigh;
+    uint16_t ModifiedTime;
+    uint16_t ModifiedDate;
+    uint16_t FirstClusterLow;
+    uint32_t Size;
+} __attribute__((__packed__)) DirectoryEntry;
+
 BootSector g_BootSector;
 uint8_t *g_Fat = NULL;
+DirectoryEntry *g_RootDirectory = NULL;
 
 bool readBootSector(FILE* disk){
     return fread(&g_BootSector, sizeof(g_BootSector), 1, disk) > 0;
