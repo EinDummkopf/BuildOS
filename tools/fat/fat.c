@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 typedef uint8_t bool;
 #define true 1;
@@ -66,6 +67,26 @@ bool readFat(FILE* disk){
     return readSectors(disk, g_BootSector.ReservedSectors, g_BootSector.SectorsPerFat, g_Fat);
 }
 
+
+bool readRootDirectory(FILE* disk){
+    uint32_t lba = g_BootSector.ReservedSectors + g_BootSector.SectorsPerFat * g_BootSector.FatCount;
+    uint32_t size = sizeof(DirectoryEntry) * g_BootSector.DirEntryCount;
+    uint32_t sectors = size / g_BootSector.BytePerSector;
+    if(size % g_BootSector.BytePerSector > 0)
+        sectors++;
+    g_RootDirectory = (DirectoryEntry*) malloc(sectors * g_BootSector.BytePerSector);
+    return readSectors(disk, lba, sectors, g_RootDirectory);
+}
+
+DirectoryEntry* findFile(const char *name){
+    for(uint32_t i=0; i<g_BootSector.DirEntryCount; i++){
+        if(memcmp(name, g_RootDirectory[i].Name, 11) == 0)
+            return &g_RootDirectory[i];
+    }
+
+    return NULL;
+}
+
 int main(int argc, char *argv[]){
     if(argc < 3){
         printf("Syntax: %s <disk image> <file name>\n", argv[0]);
@@ -89,6 +110,22 @@ int main(int argc, char *argv[]){
         return -3;
     }
 
+    if(!readRootDirectory(disk)){
+        fprintf(stderr, "Could not read FAT!\n");
+        free(g_Fat);
+        free(g_RootDirectory);
+        return -4;
+    }
+
+    DirectoryEntry* fileEntry = findFile(argv[2]);
+    if(!fileEntry){
+        fprintf(stderr, "Could not read %s!\n", argv[2]);
+        free(g_Fat);
+        free(g_RootDirectory);
+        return -4;
+    }
+
     free(g_Fat);
+    free(g_RootDirectory);
     return 0;
 }
