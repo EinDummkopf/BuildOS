@@ -37,29 +37,6 @@ ebr_system_id:	db 'FAT12   ' ; 8 bytes
 
 
 start:
-	jmp main
-
-puts:
-	push si
-	push ax
-
-.loop:
-	lodsb ; load next charactor in al
-	or al, al ; verify if next charactor is null?
-	jz .done
-
-	mov ah, 0x0E
-	mov bh, 0
-	int 0x10
-	
-	jmp .loop
-
-.done:
-	pop ax
-	pop si
-	ret
-
-main:
 	; setup data segments
 	mov ax, 0
 	mov ds, ax
@@ -69,17 +46,31 @@ main:
 	mov ss, ax
 	mov sp, 0x7C00 ; stack grows downwards
 
-	;read something from floopy disk
+	push es
+	push word .after
+	retf
+
+.after:
+	; read something from floopy disk
 	mov [ebr_drive_number], dl
 	
-	mov ax, 1 ; LBA = 1
-	mov cl, 1
-	mov bx, 0x7E00 
-	call disk_read
-
-	; print message
+	; show loading message
 	mov si, msg_hello
 	call puts
+
+	; read drive parameter
+	push es
+	mov ah, 08h
+	int 13h
+	jc floopy_error
+	pop es
+
+	and cl, 0x3F ; remove top 2 bits
+	xor ch, ch 
+	mov [bdb_sectors_per_track], cx ; sector count
+
+	inc dh
+	mov [bdb_heads], dh ; head count
 
 	cli
 	hlt
@@ -102,6 +93,26 @@ wait_key_and_reboot:
 .halt:
 	cli
 	hlt
+
+puts:
+	push si
+	push ax
+
+.loop:
+	lodsb ; load next charactor in al
+	or al, al ; verify if next charactor is null?
+	jz .done
+
+	mov ah, 0x0E
+	mov bh, 0
+	int 0x10
+	
+	jmp .loop
+
+.done:
+	pop ax
+	pop si
+	ret
 
 ;
 ; Disk routines
@@ -180,7 +191,7 @@ disk_reset:
 	popa
 	ret
 
-msg_hello: db "Hello world!", ENDL,  0
+msg_loading: db "Loading...", ENDL,  0
 msg_read_failed: db "Read from disk failed!", ENDL, 0
 
 times 510-($-$$) db 0
