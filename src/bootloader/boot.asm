@@ -67,11 +67,31 @@ start:
 
 	and cl, 0x3F ; remove top 2 bits
 	xor ch, ch 
-	mov [bdb_sectors_per_track], cx ; sector count
+	mov [bdb_sectors_per_track], cx \; sector count
 
 	inc dh
 	mov [bdb_heads], dh ; head count
 
+	; read FAT root directory
+	mov ax, [bdb_sectors_per_fat] ; compute LBA of root dir = reserved + fats * sectors_per_fat
+	mov bl, [bdb_fat_count]
+	xor bh, bh
+	mul bx ; ax = (fat * sectors_per_fat)
+	add ax, [bdb_reserved_sectors] ax = LBA of root dir
+	push ax
+
+	; compute size of root dir = (32 * number_of_entries) / bytes_per_sector
+	mov ax, [bdb_dir_entries_count]
+	shl ax, 5 ; ax *= 32
+	xor dx, dx ; dx = 0
+	div word [bdb_bytes_per_sector] ; number of sectors we need to read
+
+	test dx, dx ; if dx != 0, add 1
+	jz root_dir_after
+	inc ax ; division remainder != 0, add 1
+		   ; this means we have a sector only partially filled with entries
+
+.root_dir_after:
 	cli
 	hlt
 
