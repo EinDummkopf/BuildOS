@@ -120,7 +120,7 @@ start:
 	; kernel not found
 	jmp kernel_not_found_error
 
-found_kernel:
+.found_kernel:
 
 	cli
 	hlt
@@ -135,7 +135,9 @@ floopy_error:
 	jmp wait_key_and_reboot
 
 kernel_not_found_error:
- 
+	mov si, msg_kernel_not_found
+	call puts
+	jmp wait_key_and_reboot
 
 wait_key_and_reboot:
 	mov ah, 0
@@ -246,6 +248,7 @@ disk_reset:
 
 msg_loading: db "Loading...", ENDL,  0
 msg_read_failed: db "Read from disk failed!", ENDL, 0
+msg_kernel_not_found: db "KERNEL.BIN file not found!", ENDL, 0
 file_kernel_bin: db "KERNEL  BIN"
 
 times 510-($-$$) db 0
