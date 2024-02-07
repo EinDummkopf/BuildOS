@@ -105,7 +105,22 @@ start:
 	mov di, buffer
 
 .search_kernel:
+	mov si, file_kernel_bin
+	mov cx, 11 ; compare up to 11 characters
+	push di
+	repe cmpsb
+	pop di
+	je .found_kernel
 	
+	add di, 32
+	inc bx
+	cmp bx, [bdb_dir_entries_count]
+	jl .search_kernel
+
+	; kernel not found
+	jmp kernel_not_found_error
+
+found_kernel:
 
 	cli
 	hlt
@@ -118,6 +133,9 @@ floopy_error:
 	mov si, msg_read_failed
 	call puts
 	jmp wait_key_and_reboot
+
+kernel_not_found_error:
+ 
 
 wait_key_and_reboot:
 	mov ah, 0
@@ -228,6 +246,7 @@ disk_reset:
 
 msg_loading: db "Loading...", ENDL,  0
 msg_read_failed: db "Read from disk failed!", ENDL, 0
+file_kernel_bin: db "KERNEL  BIN"
 
 times 510-($-$$) db 0
 dw 0AA55h
