@@ -55,7 +55,7 @@ start:
 	mov [ebr_drive_number], dl
 	
 	; show loading message
-	mov si, msg_hello
+	mov si, msg_loading
 	call puts
 
 	; read drive parameter
@@ -67,7 +67,7 @@ start:
 
 	and cl, 0x3F ; remove top 2 bits
 	xor ch, ch 
-	mov [bdb_sectors_per_track], cx \; sector count
+	mov [bdb_sectors_per_track], cx ; sector count
 
 	inc dh
 	mov [bdb_heads], dh ; head count
@@ -77,7 +77,7 @@ start:
 	mov bl, [bdb_fat_count]
 	xor bh, bh
 	mul bx ; ax = (fat * sectors_per_fat)
-	add ax, [bdb_reserved_sectors] ax = LBA of root dir
+	add ax, [bdb_reserved_sectors] ; ax = LBA of root dir
 	push ax
 
 	; compute size of root dir = (32 * number_of_entries) / bytes_per_sector
@@ -92,6 +92,21 @@ start:
 		   ; this means we have a sector only partially filled with entries
 
 .root_dir_after:
+	; read root directory
+	mov cl, al ; cl = number of sectors to read = size of root directory
+	pop ax ; ax = LBA of root directory
+	mov dl, [ebr_drive_number] ; dl = drive number (we saved it previously)
+	mov bx, buffer ; es:bx = buffer
+
+	call disk_read
+
+	; search for kernel.bin
+	xor bx, bx
+	mov di, buffer
+
+.search_kernel:
+	
+
 	cli
 	hlt
 
@@ -216,3 +231,5 @@ msg_read_failed: db "Read from disk failed!", ENDL, 0
 
 times 510-($-$$) db 0
 dw 0AA55h
+
+buffer:
