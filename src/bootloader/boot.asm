@@ -121,6 +121,18 @@ start:
 	jmp kernel_not_found_error
 
 .found_kernel:
+	; di should have the address to the entry
+	mov ax, [di + 26] ; first logical cluster field (offset 26)
+	mov [kernel_cluster], ax
+
+	; load FAT from disk into memory
+	mov ax, [bdb_reserved_sectors]
+	mov bx, buffer
+	mov cl, [sectors_per_fat]
+	mov dl, [ebr_drive_number]
+	call disk_read
+
+	; read kernel and process FAT chain
 
 	cli
 	hlt
@@ -250,6 +262,10 @@ msg_loading: db "Loading...", ENDL,  0
 msg_read_failed: db "Read from disk failed!", ENDL, 0
 msg_kernel_not_found: db "KERNEL.BIN file not found!", ENDL, 0
 file_kernel_bin: db "KERNEL  BIN"
+kernel_cluster: dw 0
+
+KERNEL_LOAD_SEGMENT equ 0x2000
+KERNEL_LOAD_OFFSET equ 0
 
 times 510-($-$$) db 0
 dw 0AA55h
