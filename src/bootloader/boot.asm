@@ -87,7 +87,7 @@ start:
 	div word [bdb_bytes_per_sector] ; number of sectors we need to read
 
 	test dx, dx ; if dx != 0, add 1
-	jz root_dir_after
+	jz .root_dir_after
 	inc ax ; division remainder != 0, add 1
 		   ; this means we have a sector only partially filled with entries
 
@@ -169,6 +169,25 @@ start:
 
 .even
 	and ax, 0x0FFF
+
+.next_cluster_after:
+	cmp ax, 0x0FF8 ; end of chain
+	jae .read_finish
+
+	mov [kernel_cluster], ax
+	jmp .load_kernel_loop
+
+.read_finish
+	; jump to our kernel
+	mov dl, [ebr_drive_number] ; boot device in dl
+
+	mov ax, KERNEL_LOAD_SEGMENT ; set segment registers
+	mov ds, ax
+	mov es, ax
+
+	jmp KERNEL_LOAD_SEGMENT:KERNEL_LOAD_OFFSET
+
+	jmp wait_key_and_reboot ; should never happen 
 
 	cli
 	hlt
