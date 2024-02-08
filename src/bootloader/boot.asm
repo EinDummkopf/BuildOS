@@ -128,7 +128,7 @@ start:
 	; load FAT from disk into memory
 	mov ax, [bdb_reserved_sectors]
 	mov bx, buffer
-	mov cl, [sectors_per_fat]
+	mov cl, [bdb_sectors_per_fat]
 	mov dl, [ebr_drive_number]
 	call disk_read
 
@@ -167,7 +167,7 @@ start:
 	shr ax, 4
 	jmp .next_cluster_after
 
-.even
+.even:
 	and ax, 0x0FFF
 
 .next_cluster_after:
@@ -177,7 +177,7 @@ start:
 	mov [kernel_cluster], ax
 	jmp .load_kernel_loop
 
-.read_finish
+.read_finish:
 	; jump to our kernel
 	mov dl, [ebr_drive_number] ; boot device in dl
 
