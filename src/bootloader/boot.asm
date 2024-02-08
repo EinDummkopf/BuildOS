@@ -133,6 +133,42 @@ start:
 	call disk_read
 
 	; read kernel and process FAT chain
+	mov bx, KERNEL_LOAD_SEGMENT
+	mov es, bx
+	mov bx, KERNEL_LOAD_OFFSET
+
+.load_kernel_loop:
+	; read next cluster
+	mov ax, [kernel_cluster]
+	add ax, 31 ; first cluster = (kernel_cluster - 2) * sectors_per_cluster + start_sector
+			   ; start sector = reserved + fats + root directory size = 1 + 18 + 14 = 33
+
+	mov cl, 1
+	mov dl, [ebr_drive_number]
+	call disk_read
+
+	add bx, [bdb_bytes_per_sector]
+
+	; compute location of next cluster
+	mov ax, [kernel_cluster] 
+	mov cx, 3
+	mul cx
+	mov cx, 2
+	div cx ; ax = index of entry in FAT, dx = cluster mod 2
+
+	mov si, buffer
+	add si, ax
+	mov ax, [ds:si] ; read entry from FAT table at index ax
+
+	or dx, dx
+	jz .even
+
+.odd:
+	shr ax, 4
+	jmp .next_cluster_after
+
+.even
+	and ax, 0x0FFF
 
 	cli
 	hlt
