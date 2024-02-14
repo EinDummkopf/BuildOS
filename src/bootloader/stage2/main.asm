@@ -14,3 +14,9 @@ entry:
 	sti
 
 	; expect boot drive in dl, send it as argument to cstart function
+	xor dh, dh
+	push dx
+	call _cstart_
+
+	cli
+	hlt
